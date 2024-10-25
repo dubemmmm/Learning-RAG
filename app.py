@@ -1,108 +1,62 @@
-import tempfile
 import streamlit as st
-from embedchain import App
+from streamlit_chat import message
+from embedchain import OpenSourceApp
 
+# Create a Streamlit app title and description
+st.title("Online Resources ChatBot:books:")
+st.write("Enter multiple URL links and ask questions to the embedded data.")
 
-# Page config
-st.set_page_config(page_title="Chat with YouTube Video", page_icon="📺")
+#initialize the opensourceApp instance
+zuck_bot = OpenSourceApp()
 
-# Initialize session states
-if 'app' not in st.session_state:
-    st.session_state.app = None
-if 'db_path' not in st.session_state:
-    st.session_state.db_path = tempfile.mkdtemp()
-if 'video_added' not in st.session_state:
-    st.session_state.video_added = False
-if 'chat_history' not in st.session_state:
-    st.session_state.chat_history = []
+#get user input for URLs
+num_links = st.number_input("Enter the number of URLs:",min_value=1,value=1,step=1)
 
-def embedchain_bot(db_path, api_key):
-    try:
-        return App.from_config(
-            config={
-                "llm": {
-                    "provider": "openai",
-                    "config": {
-                        "model": "gpt-3.5-turbo",  # Changed to gpt-3.5-turbo for better compatibility
-                        "temperature": 0.5,
-                        "api_key": api_key
-                    }
-                },
-                "vectordb": {
-                    "provider": "chroma",
-                    "config": {
-                        "dir": db_path
-                    }
-                },
-                "embedder": {
-                    "provider": "openai",
-                    "config": {
-                        "api_key": api_key
-                    }
-                }
-            }
-        )
-    except Exception as e:
-        st.error(f"Error initializing bot: {str(e)}")
-        return None
+url_inputs = []
+for i in range(num_links):
+    url = st.text_input(f"Enter URL {i+1}:",key=f'url_{i}')
+    url_inputs.append(url)
 
-# Create Streamlit app
-st.title("Chat with YouTube Video 📺")
-st.caption("This app allows you to chat with a YouTube video using OpenAI API")
+#add urls to the opensourceApp instance
+for url in url_inputs:
+    if url:
+        zuck_bot.add("web_page",url)
 
-# Get OpenAI API key from user
-openai_access_token = st.text_input("OpenAI API Key", type="password")
+#conversation chat functions:
+def conversation_chat(query):
+    result = zuck_bot.query(query)
+    st.session_state['history'].append((query,result))
+    return result
 
-# If OpenAI API key is provided, create an instance of App
-if openai_access_token:
-    # Only create app instance if it doesn't exist
-    if st.session_state.app is None:
-        with st.spinner("Initializing bot..."):
-            st.session_state.app = embedchain_bot(st.session_state.db_path, openai_access_token)
+def intialize_session_state():
+    if "history" not in st.session_state:
+        st.session_state['history'] = []
+    if 'generated' not in st.session_state:
+        st.session_state['generated'] = ["Hello! Ask me anything about"]
+    if "past" not in st.session_state:
+        st.session_state['past'] = ['Hey!']
+
+def display_chat_histroy():
+    reply_container = st.container()
+    container =st.container()
+    
+    with container:
+        with st.form(key='my_form',clear_on_submit=True):
+            user_input = st.text_input("Question:",placeholder="Ask me about resources",key='input')
+            submit_button = st.form_submit_button(label='send')
         
-    if st.session_state.app is not None:
-        # Get the YouTube video URL from the user
-        video_url = st.text_input("Enter YouTube Video URL", type="default")
-        
-        # Add the video to the knowledge base
-        if video_url and not st.session_state.video_added:
-            try:
-                with st.spinner("Processing video..."):
-                    st.session_state.app.add(video_url, data_type="youtube_video")
-                st.success(f"Added {video_url} to knowledge base!")
-                st.session_state.video_added = True
-            except Exception as e:
-                st.error(f"Error processing video: {str(e)}")
-        
-        # Only show chat interface if video has been added
-        if st.session_state.video_added:
-            # Ask a question about the video
-            prompt = st.text_input("Ask any question about the YouTube Video")
-            
-            # Chat with the video
-            if prompt:
-                try:
-                    with st.spinner("Thinking..."):
-                        answer = st.session_state.app.chat(prompt)
-                        # Add to chat history
-                        st.session_state.chat_history.append({"question": prompt, "answer": answer})
-                        
-                        # Display answer
-                        st.write("Answer:", answer)
-                except Exception as e:
-                    st.error(f"Error getting response: {str(e)}")
-            
-            # Display chat history
-            if st.session_state.chat_history:
-                st.markdown("### Chat History")
-                for chat in st.session_state.chat_history:
-                    with st.expander(f"Q: {chat['question'][:50]}..."):
-                        st.markdown(f"**Question:** {chat['question']}")
-                        st.markdown(f"**Answer:** {chat['answer']}")
+        if submit_button and user_input:
+            output = conversation_chat(user_input)
+            st.session_state['past'].append(user_input)
+            st.session_state['generated'].append(output)
+    
+    if st.session_state['generated']:
+        with reply_container:
+            for i in range(len(st.session_state["generated"])):
+                message(st.session_state['past'][i],is_user=True,key=str(i)+"_user",avatar_style="thumbs")
+                message(st.session_state['generated'][i],key=str(i),avatar_style="fun-emoji")
+#initialize the session_state
+intialize_session_state()
 
-# Add reset button
-if st.button("Reset App"):
-    st.session_state.app = None
-    st.session_state.video_added = False
-    st.session_state.chat_history = []
-    st.experimental_rerun()
+#Display the chat history
+display_chat_histroy()
