@@ -1,6 +1,6 @@
 import tempfile
 import streamlit as st
-from embedchain import App
+
 
 # Page config
 st.set_page_config(page_title="Chat with YouTube Video", page_icon="📺")
