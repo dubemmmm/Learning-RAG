@@ -5,13 +5,35 @@ from embedchain import App
 
 # Define the embedchain_bot function
 def embedchain_bot(db_path, api_key):
-    return App.from_config(
-        config={
-            "llm": {"provider": "openai", "config": {"model": "gpt-4o", "temperature": 0.5, "api_key": api_key}},
-            "vectordb": {"provider": "chroma", "config": {"dir": db_path}},
-            "embedder": {"provider": "openai", "config": {"api_key": api_key}},
-        }
-    )
+    try:
+        bot = App.from_config(
+            config={
+                "llm": {
+                    "provider": "openai",
+                    "config": {
+                        "model": "gpt-4",  # or "gpt-3.5-turbo"
+                        "temperature": 0.5,
+                        "api_key": api_key
+                    }
+                },
+                "vectordb": {
+                    "provider": "chroma",
+                    "config": {
+                        "dir": db_path
+                    }
+                },
+                "embedder": {
+                    "provider": "openai",
+                    "config": {
+                        "api_key": api_key
+                    }
+                }
+            }
+        )
+        return bot
+    except Exception as e:
+        st.error(f"Error initializing bot: {str(e)}")
+        return None
 
 
 # Create Streamlit app
