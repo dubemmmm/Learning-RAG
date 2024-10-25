@@ -22,7 +22,7 @@ def embedchain_bot(db_path, api_key):
                 "llm": {
                     "provider": "openai",
                     "config": {
-                        "model": "gpt-4",  # Fixed typo here
+                        "model": "gpt-3.5-turbo",  # Changed to gpt-3.5-turbo for better compatibility
                         "temperature": 0.5,
                         "api_key": api_key
                     }
@@ -56,7 +56,8 @@ openai_access_token = st.text_input("OpenAI API Key", type="password")
 if openai_access_token:
     # Only create app instance if it doesn't exist
     if st.session_state.app is None:
-        st.session_state.app = embedchain_bot(st.session_state.db_path, openai_access_token)
+        with st.spinner("Initializing bot..."):
+            st.session_state.app = embedchain_bot(st.session_state.db_path, openai_access_token)
         
     if st.session_state.app is not None:
         # Get the YouTube video URL from the user
